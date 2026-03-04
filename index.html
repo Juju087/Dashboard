@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrgPulse — Employee Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0f1117; --surface:#171b26; --surface2:#1e2333;
+    --border:rgba(255,255,255,0.07); --accent:#4f8ef7; --accent2:#a78bfa;
+    --accent3:#34d399; --accent4:#f97316; --text:#e8eaf0; --muted:#6b7280; --danger:#f87171;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;}
+
+  .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:28px 0;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+  .logo{padding:0 24px 32px;font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--text);display:flex;align-items:center;gap:10px;}
+  .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);}
+  .nav-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);padding:0 24px 10px;margin-top:8px;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 24px;font-size:13.5px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .2s;border-left:2px solid transparent;margin:1px 0;user-select:none;}
+  .nav-item:hover{color:var(--text);background:rgba(255,255,255,.04);}
+  .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(79,142,247,.08);}
+  .nav-icon{font-size:16px;width:20px;text-align:center;}
+  .sidebar-footer{margin-top:auto;padding:24px;border-top:1px solid var(--border);}
+  .user-chip{display:flex;align-items:center;gap:10px;}
+  .av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;}
+  .user-name{font-size:13px;font-weight:600;color:var(--text);}
+  .user-role{font-size:11px;color:var(--muted);}
+
+  .main{margin-left:220px;flex:1;padding:32px 36px;max-width:calc(100vw - 220px);}
+  .page{display:none;animation:fadeUp .35s ease both;}
+  .page.active{display:block;}
+
+  .header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;}
+  .header-left h1{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;letter-spacing:-.5px;}
+  .header-left p{font-size:13px;color:var(--muted);margin-top:4px;}
+  .header-actions{display:flex;gap:10px;align-items:center;}
+  .btn{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:all .2s;}
+  .btn-ghost{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+  .btn-ghost:hover{color:var(--text);border-color:rgba(255,255,255,.15);}
+  .btn-primary{background:var(--accent);color:white;}
+  .btn-primary:hover{background:#6b9ef8;transform:translateY(-1px);box-shadow:0 4px 15px rgba(79,142,247,.35);}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 22px 18px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;}
+  .kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.3);}
+  .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:14px 14px 0 0;}
+  .kpi-card.blue::before{background:var(--accent);}.kpi-card.purple::before{background:var(--accent2);}
+  .kpi-card.green::before{background:var(--accent3);}.kpi-card.orange::before{background:var(--accent4);}
+  .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .kpi-label{font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+  .kpi-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  .blue .kpi-icon{background:rgba(79,142,247,.15);}.purple .kpi-icon{background:rgba(167,139,250,.15);}
+  .green .kpi-icon{background:rgba(52,211,153,.15);}.orange .kpi-icon{background:rgba(249,115,22,.15);}
+  .kpi-value{font-family:'Syne',sans-serif;font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1;margin-bottom:8px;}
+  .blue .kpi-value{color:var(--accent);}.purple .kpi-value{color:var(--accent2);}
+  .green .kpi-value{color:var(--accent3);}.orange .kpi-value{color:var(--accent4);}
+  .kpi-sub{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+  .badge-up{color:var(--accent3);font-weight:600;}.badge-down{color:var(--danger);font-weight:600;}
+
+  .charts-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:24px;}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+  .card-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text);}
+  .card-subtitle{font-size:12px;color:var(--muted);margin-top:3px;}
+  .tag{font-size:11px;padding:4px 10px;border-radius:20px;font-weight:500;}
+  .tag-blue{background:rgba(79,142,247,.15);color:var(--accent);}
+  .tag-green{background:rgba(52,211,153,.12);color:var(--accent3);}
+  .chart-wrap{position:relative;height:220px;}
+
+  .bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .dept-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .dept-item:last-child{border-bottom:none;}
+  .dept-color{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+  .dept-name{font-size:13px;font-weight:500;flex:1;}
+  .dept-count{font-size:13px;color:var(--muted);width:30px;text-align:right;}
+  .dept-bar-wrap{flex:1;height:4px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+  .dept-bar{height:100%;border-radius:4px;}
+  .hire-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .hire-item:last-child{border-bottom:none;}
+  .hav{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;flex-shrink:0;}
+  .hire-info{flex:1;}
+  .hire-name{font-size:13px;font-weight:600;}
+  .hire-role-text{font-size:11.5px;color:var(--muted);}
+  .hire-date{font-size:11px;color:var(--muted);}
+  .sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .sdot.active{background:var(--accent3);box-shadow:0 0 6px var(--accent3);}
+  .sdot.leave{background:var(--accent4);}
+  .sdot.remote{background:var(--accent);}
+
+  .search-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+  .search-input{flex:1;min-width:200px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s;}
+  .search-input:focus{border-color:var(--accent);}
+  .search-input::placeholder{color:var(--muted);}
+  .filter-select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;cursor:pointer;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;padding:10px 16px;text-align:left;border-bottom:1px solid var(--border);}
+  td{padding:13px 16px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .emp-name-cell{display:flex;align-items:center;gap:10px;}
+  .status-pill{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;}
+  .pill-active{background:rgba(52,211,153,.12);color:var(--accent3);}
+  .pill-leave{background:rgba(249,115,22,.12);color:var(--accent4);}
+  .pill-remote{background:rgba(79,142,247,.12);color:var(--accent);}
+  .action-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;margin-right:4px;}
+  .action-btn:hover{color:var(--text);border-color:rgba(255,255,255,.2);}
+  .action-btn.del:hover{color:var(--danger);border-color:var(--danger);}
+  .empty-state{text-align:center;padding:48px;color:var(--muted);font-size:13px;}
+
+  .dept-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .dept-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;cursor:pointer;transition:all .2s;}
+  .dept-card:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.3);border-color:rgba(255,255,255,.15);}
+  .dept-card-icon{font-size:28px;margin-bottom:12px;}
+  .dept-card-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;}
+  .dept-card-count{font-size:13px;color:var(--muted);}
+  .dept-card-bar{height:3px;border-radius:3px;margin-top:16px;}
+
+  .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;max-width:520px;margin-bottom:16px;}
+  .settings-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+
+  .coming-soon{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;}
+  .coming-soon-icon{font-size:56px;margin-bottom:20px;}
+  .coming-soon h2{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;margin-bottom:10px;}
+  .coming-soon p{color:var(--muted);font-size:14px;max-width:320px;line-height:1.6;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+  .modal-overlay.open{opacity:1;pointer-events:all;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:32px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;transform:scale(.92) translateY(20px);transition:transform .3s cubic-bezier(.34,1.2,.64,1);}
+  .modal-overlay.open .modal{transform:scale(1) translateY(0);}
+  .modal-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px;}
+  .modal-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  .form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .form-group label{font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+  .form-input,.form-select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s;width:100%;}
+  .form-input:focus,.form-select:focus{border-color:var(--accent);}
+  .form-input.error{border-color:var(--danger);}
+  .form-select option{background:var(--surface2);}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;}
+  .export-option{display:flex;align-items:center;gap:14px;padding:14px;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;cursor:pointer;transition:all .2s;}
+  .export-option:hover{border-color:var(--accent);background:rgba(79,142,247,.06);}
+  .export-icon{font-size:24px;}
+  .export-label{font-size:13px;font-weight:600;}
+  .export-desc{font-size:12px;color:var(--muted);}
+  .profile-header{display:flex;align-items:center;gap:16px;margin-bottom:24px;}
+  .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .profile-field label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:5px;}
+  .profile-field span{font-size:14px;font-weight:500;}
+
+  .toast{position:fixed;bottom:30px;right:30px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 20px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;max-width:340px;}
+  .toast.show{transform:translateY(0);opacity:1;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="logo"><div class="logo-dot"></div>OrgPulse</div>
+  <div class="nav-label">Main</div>
+  <div class="nav-item active" onclick="nav('overview',this)"><span class="nav-icon">⊞</span> Overview</div>
+  <div class="nav-item" onclick="nav('employees',this)"><span class="nav-icon">👥</span> Employees</div>
+  <div class="nav-item" onclick="nav('departments',this)"><span class="nav-icon">🏢</span> Departments</div>
+  <div class="nav-item" onclick="nav('attendance',this)"><span class="nav-icon">📅</span> Attendance</div>
+  <div class="nav-label" style="margin-top:16px">Reports</div>
+  <div class="nav-item" onclick="nav('analytics',this)"><span class="nav-icon">📊</span> Analytics</div>
+  <div class="nav-item" onclick="nav('payroll',this)"><span class="nav-icon">📋</span> Payroll</div>
+  <div class="nav-item" onclick="nav('performance',this)"><span class="nav-icon">🎯</span> Performance</div>
+  <div class="nav-label" style="margin-top:16px">Admin</div>
+  <div class="nav-item" onclick="nav('settings',this)"><span class="nav-icon">⚙️</span> Settings</div>
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="av">AO</div>
+      <div><div class="user-name">Admin Officer</div><div class="user-role">HR Manager</div></div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+
+  <!-- OVERVIEW -->
+  <div id="page-overview" class="page active">
+    <div class="header">
+      <div class="header-left"><h1>Employee Overview</h1><p id="overview-sub">Wednesday, March 4, 2026 · 248 total employees</p></div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" onclick="openExport()">⬇ Export</button>
+        <button class="btn btn-primary" onclick="openAdd()">+ Add Employee</button>
+      </div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card blue"><div class="kpi-top"><span class="kpi-label">Total Employees</span><div class="kpi-icon">👥</div></div><div class="kpi-value" id="kpi-total">248</div><div class="kpi-sub"><span class="badge-up">↑ 12</span> since last month</div></div>
+      <div class="kpi-card green"><div class="kpi-top"><span class="kpi-label">Active Today</span><div class="kpi-icon">✅</div></div><div class="kpi-value">211</div><div class="kpi-sub"><span class="badge-up">85%</span> attendance rate</div></div>
+      <div class="kpi-card purple"><div class="kpi-top"><span class="kpi-label">On Leave</span><div class="kpi-icon">🌿</div></div><div class="kpi-value">24</div><div class="kpi-sub"><span class="badge-down">↑ 5</span> more than usual</div></div>
+      <div class="kpi-card orange"><div class="kpi-top"><span class="kpi-label">New Hires (Q1)</span><div class="kpi-icon">🚀</div></div><div class="kpi-value" id="kpi-hires">31</div><div class="kpi-sub"><span class="badge-up">↑ 8</span> vs last quarter</div></div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card"><div class="card-header"><div><div class="card-title">Headcount Growth</div><div class="card-subtitle">Monthly employee count over the past year</div></div><span class="tag tag-blue">2025–2026</span></div><div class="chart-wrap"><canvas id="headcountChart"></canvas></div></div>
+      <div class="chart-card"><div class="card-header"><div><div class="card-title">By Department</div><div class="card-subtitle">Current distribution</div></div><span class="tag tag-green">Live</span></div><div class="chart-wrap"><canvas id="deptChart"></canvas></div></div>
+    </div>
+    <div class="bottom-grid">
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Department Breakdown</div><div class="card-subtitle">Headcount per team</div></div></div>
+        <div class="dept-item"><div class="dept-color" style="background:#4f8ef7"></div><div class="dept-name">Kitchen</div><div class="dept-bar-wrap"><div class="dept-bar" style="width:72%;background:#4f8ef7"></div></div><div class="dept-count">72</div></div>
+        <div class="dept-item"><div class="dept-color" style="background:#a78bfa"></div><div class="dept-name">Sales & Marketing</div><div class="dept-bar-wrap"><div class="dept-bar" style="width:55%;background:#a78bfa"></div></div><div class="dept-count">55</div></div>
+        <div class="dept-item"><div class="dept-color" style="background:#34d399"></div><div class="dept-name">Admin</div><div class="dept-bar-wrap"><div class="dept-bar" style="width:48%;background:#34d399"></div></div><div class="dept-count">48</div></div>
+        <div class="dept-item"><div class="dept-color" style="background:#f97316"></div><div class="dept-name">Finance</div><div class="dept-bar-wrap"><div class="dept-bar" style="width:30%;background:#f97316"></div></div><div class="dept-count">30</div></div>
+        <div class="dept-item"><div class="dept-color" style="background:#f87171"></div><div class="dept-name">HR</div><div class="dept-bar-wrap"><div class="dept-bar" style="width:25%;background:#f87171"></div></div><div class="dept-count">25</div></div>
+        <div class="dept-item"><div class="dept-color" style="background:#fbbf24"></div><div class="dept-name">Bar</div><div class="dept-bar-wrap"><div class="dept-bar" style="width:18%;background:#fbbf24"></div></div><div class="dept-count">18</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Recent Hires</div><div class="card-subtitle">Newest team members</div></div></div>
+        <div id="recent-list">
+          <div class="hire-item"><div class="hav" style="width:36px;height:36px;font-size:13px;background:linear-gradient(135deg,#4f8ef7,#a78bfa)">AM</div><div class="hire-info"><div class="hire-name">Amara Mensah</div><div class="hire-role-text">Senior Engineer · Kitchen</div></div><div class="sdot active"></div><div class="hire-date">Mar 1</div></div>
+          <div class="hire-item"><div class="hav" style="width:36px;height:36px;font-size:13px;background:linear-gradient(135deg,#34d399,#4f8ef7)">KO</div><div class="hire-info"><div class="hire-name">Kofi Owusu</div><div class="hire-role-text">Product Designer · Design</div></div><div class="sdot active"></div><div class="hire-date">Feb 24</div></div>
+          <div class="hire-item"><div class="hav" style="width:36px;height:36px;font-size:13px;background:linear-gradient(135deg,#f97316,#fbbf24)">NB</div><div class="hire-info"><div class="hire-name">Ngozi Balogun</div><div class="hire-role-text">Finance Analyst · Finance</div></div><div class="sdot remote"></div><div class="hire-date">Feb 20</div></div>
+          <div class="hire-item"><div class="hav" style="width:36px;height:36px;font-size:13px;background:linear-gradient(135deg,#a78bfa,#f87171)">TA</div><div class="hire-info"><div class="hire-name">Tunde Adeyemi</div><div class="hire-role-text">Sales Executive · Sales</div></div><div class="sdot leave"></div><div class="hire-date">Feb 15</div></div>
+          <div class="hire-item"><div class="hav" style="width:36px;height:36px;font-size:13px;background:linear-gradient(135deg,#f87171,#a78bfa)">ZN</div><div class="hire-info"><div class="hire-name">Zainab Nwosu</div><div class="hire-role-text">HR Specialist · HR</div></div><div class="sdot active"></div><div class="hire-date">Feb 10</div></div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:16px;font-size:11.5px;color:var(--muted);">
+          <span><span class="sdot active" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>In office</span>
+          <span><span class="sdot remote" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>Remote</span>
+          <span><span class="sdot leave" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>On leave</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMPLOYEES -->
+  <div id="page-employees" class="page">
+    <div class="header">
+      <div class="header-left"><h1>Employees</h1><p id="emp-sub">All team members</p></div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" onclick="openExport()">⬇ Export</button>
+        <button class="btn btn-primary" onclick="openAdd()">+ Add Employee</button>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="search-bar">
+        <input class="search-input" placeholder="🔍  Search by name, role or department..." oninput="filterTable(this.value)">
+        <select class="filter-select" onchange="filterByStatus(this.value)">
+          <option value="">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Remote">Remote</option>
+          <option value="On Leave">On Leave</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Employee</th><th>Job Title</th><th>Department</th><th>Status</th><th>Date Joined</th><th>Actions</th></tr></thead>
+          <tbody id="emp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEPARTMENTS -->
+  <div id="page-departments" class="page">
+    <div class="header"><div class="header-left"><h1>Departments</h1><p>All teams in the organisation</p></div></div>
+    <div class="dept-cards">
+      <div class="dept-card" onclick="toast('💻 Kitchen — 72 employees · 3 open roles')"><div class="dept-card-icon">💻</div><div class="dept-card-name">Kitchen</div><div class="dept-card-count">72 employees · 3 open roles</div><div class="dept-card-bar" style="background:#4f8ef7;width:72%"></div></div>
+      <div class="dept-card" onclick="toast('📣 Sales & Marketing — 55 employees · 2 open roles')"><div class="dept-card-icon">📣</div><div class="dept-card-name">Sales & Marketing</div><div class="dept-card-count">55 employees · 2 open roles</div><div class="dept-card-bar" style="background:#a78bfa;width:55%"></div></div>
+      <div class="dept-card" onclick="toast('⚙️ Admin — 48 employees · 1 open role')"><div class="dept-card-icon">⚙️</div><div class="dept-card-name">Admin</div><div class="dept-card-count">48 employees · 1 open role</div><div class="dept-card-bar" style="background:#34d399;width:48%"></div></div>
+      <div class="dept-card" onclick="toast('💰 Finance — 30 employees · stable')"><div class="dept-card-icon">💰</div><div class="dept-card-name">Finance</div><div class="dept-card-count">30 employees · stable</div><div class="dept-card-bar" style="background:#f97316;width:30%"></div></div>
+      <div class="dept-card" onclick="toast('🤝 HR — 25 employees · stable')"><div class="dept-card-icon">🤝</div><div class="dept-card-name">HR</div><div class="dept-card-count">25 employees · stable</div><div class="dept-card-bar" style="background:#f87171;width:25%"></div></div>
+      <div class="dept-card" onclick="toast('🎨 Bar — 18 employees · 2 open roles')"><div class="dept-card-icon">🎨</div><div class="dept-card-name">Bar</div><div class="dept-card-count">18 employees · 2 open roles</div><div class="dept-card-bar" style="background:#fbbf24;width:18%"></div></div>
+    </div>
+  </div>
+
+  <div id="page-attendance" class="page"><div class="coming-soon"><div class="coming-soon-icon">📅</div><h2>Attendance Tracker</h2><p>Track daily check-ins, late arrivals and absenteeism across all teams.</p><br><button class="btn btn-primary" onclick="toast('🔔 You\'ll be notified when Attendance is ready!')">Notify Me When Ready</button></div></div>
+  <div id="page-analytics" class="page"><div class="coming-soon"><div class="coming-soon-icon">📊</div><h2>Analytics</h2><p>Deep-dive reports on headcount trends, retention and hiring metrics.</p><br><button class="btn btn-primary" onclick="toast('🔔 You\'ll be notified when Analytics is ready!')">Notify Me When Ready</button></div></div>
+  <div id="page-payroll" class="page"><div class="coming-soon"><div class="coming-soon-icon">📋</div><h2>Payroll</h2><p>Manage salaries, bonuses and payslip generation for every employee.</p><br><button class="btn btn-primary" onclick="toast('🔔 You\'ll be notified when Payroll is ready!')">Notify Me When Ready</button></div></div>
+  <div id="page-performance" class="page"><div class="coming-soon"><div class="coming-soon-icon">🎯</div><h2>Performance</h2><p>Set goals, track OKRs and run quarterly reviews for your team.</p><br><button class="btn btn-primary" onclick="toast('🔔 You\'ll be notified when Performance is ready!')">Notify Me When Ready</button></div></div>
+
+  <!-- SETTINGS -->
+  <div id="page-settings" class="page">
+    <div class="header"><div class="header-left"><h1>Settings</h1><p>Manage your organisation preferences</p></div></div>
+    <div class="settings-card">
+      <div class="settings-title">Organisation Details</div>
+      <div class="form-group"><label>Company Name</label><input class="form-input" id="s-company" value="Mayfair Organisation"></div>
+      <div class="form-group"><label>Admin Email</label><input class="form-input" value="admin@mayfair.com"></div>
+      <div class="form-group"><label>Industry</label><select class="form-select"><option>Technology</option><option>Finance</option><option>Healthcare</option><option>Education</option><option>Retail</option></select></div>
+      <button class="btn btn-primary" onclick="toast('✅ Settings saved for \'' + document.getElementById('s-company').value + '\'!')">Save Changes</button>
+    </div>
+    <div class="settings-card">
+      <div class="settings-title">Preferences</div>
+      <div class="form-group"><label>Timezone</label><select class="form-select"><option>Africa/Lagos (WAT, UTC+1)</option><option>Europe/London (GMT)</option><option>America/New_York (EST)</option></select></div>
+      <div class="form-group"><label>Date Format</label><select class="form-select"><option>MMM D, YYYY</option><option>DD/MM/YYYY</option><option>MM/DD/YYYY</option></select></div>
+      <button class="btn btn-primary" onclick="toast('✅ Preferences saved!')">Save Preferences</button>
+    </div>
+  </div>
+
+</main>
+
+<!-- ADD EMPLOYEE MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-title">➕ Add New Employee</div>
+    <div class="modal-sub">Fill in the details to onboard a new team member</div>
+    <div class="form-row">
+      <div class="form-group" style="margin:0"><label>First Name *</label><input class="form-input" id="i-fn" placeholder="e.g. Amara"></div>
+      <div class="form-group" style="margin:0"><label>Last Name *</label><input class="form-input" id="i-ln" placeholder="e.g. Mensah"></div>
+    </div>
+    <div class="form-group"><label>Job Title *</label><input class="form-input" id="i-role" placeholder="e.g. Senior Engineer"></div>
+    <div class="form-row">
+      <div class="form-group" style="margin:0"><label>Department</label>
+        <select class="form-select" id="i-dept"><option>Kitchen</option><option>Sales & Marketing</option><option>Admin</option><option>Finance</option><option>HR</option><option>Bar</option></select>
+      </div>
+      <div class="form-group" style="margin:0"><label>Status</label>
+        <select class="form-select" id="i-status"><option>Active</option><option>Remote</option><option>On Leave</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Email Address</label><input class="form-input" id="i-email" placeholder="e.g. amara@company.com"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('addModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addEmp()">Add Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW EMPLOYEE MODAL -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="profile-header">
+      <div class="hav" id="v-av" style="width:56px;height:56px;font-size:18px;flex-shrink:0"></div>
+      <div><div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700" id="v-name"></div><div style="color:var(--muted);font-size:13px;margin-top:3px" id="v-title"></div></div>
+    </div>
+    <div class="profile-grid">
+      <div class="profile-field"><label>Department</label><span id="v-dept"></span></div>
+      <div class="profile-field"><label>Status</label><span id="v-status"></span></div>
+      <div class="profile-field"><label>Email</label><span id="v-email" style="color:var(--accent);font-size:13px"></span></div>
+      <div class="profile-field"><label>Date Joined</label><span id="v-joined"></span></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('viewModal')">Close</button>
+      <button class="btn btn-primary" onclick="closeModal('viewModal');toast('✏️ Edit profile — coming in full version!')">Edit Profile</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <div class="modal-title">⬇ Export Data</div>
+    <div class="modal-sub">Choose a format to download your employee data</div>
+    <div class="export-option" onclick="doExport('CSV Spreadsheet')"><div class="export-icon">📄</div><div><div class="export-label">CSV Spreadsheet</div><div class="export-desc">Compatible with Excel and Google Sheets</div></div></div>
+    <div class="export-option" onclick="doExport('PDF Report')"><div class="export-icon">📑</div><div><div class="export-label">PDF Report</div><div class="export-desc">Formatted report ready to print or share</div></div></div>
+    <div class="export-option" onclick="doExport('JSON')"><div class="export-icon">🗂</div><div><div class="export-label">JSON Data</div><div class="export-desc">Raw data for developers and integrations</div></div></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('exportModal')">Close</button></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toastEl"><span id="toast-msg"></span></div>
+
+<script>
+const grads=['linear-gradient(135deg,#4f8ef7,#a78bfa)','linear-gradient(135deg,#34d399,#4f8ef7)','linear-gradient(135deg,#f97316,#fbbf24)','linear-gradient(135deg,#a78bfa,#f87171)','linear-gradient(135deg,#f87171,#a78bfa)','linear-gradient(135deg,#fbbf24,#f97316)'];
+let emps=[
+  {id:1,fn:'Amara',ln:'Mensah',role:'Senior Engineer',dept:'Kitchen',status:'Active',email:'a.mensah@company.com',joined:'Mar 1, 2026'},
+  {id:2,fn:'Kofi',ln:'Owusu',role:'Product Designer',dept:'Bar',status:'Active',email:'k.owusu@company.com',joined:'Feb 24, 2026'},
+  {id:3,fn:'Ngozi',ln:'Balogun',role:'Finance Analyst',dept:'Finance',status:'Remote',email:'n.balogun@company.com',joined:'Feb 20, 2026'},
+  {id:4,fn:'Tunde',ln:'Adeyemi',role:'Sales Executive',dept:'Sales & Marketing',status:'On Leave',email:'t.adeyemi@company.com',joined:'Feb 15, 2026'},
+  {id:5,fn:'Zainab',ln:'Nwosu',role:'HR Specialist',dept:'HR',status:'Active',email:'z.nwosu@company.com',joined:'Feb 10, 2026'},
+  {id:6,fn:'Emeka',ln:'Okafor',role:'Backend Developer',dept:'Kitchen',status:'Remote',email:'e.okafor@company.com',joined:'Jan 20, 2026'},
+  {id:7,fn:'Fatima',ln:'Yusuf',role:'Marketing Manager',dept:'Sales & Marketing',status:'Active',email:'f.yusuf@company.com',joined:'Jan 15, 2026'},
+  {id:8,fn:'Chidi',ln:'Eze',role:'Admin Lead',dept:'Admin',status:'Active',email:'c.eze@company.com',joined:'Jan 8, 2026'},
+];
+let nid=9, ftxt='', fstat='';
+
+function ini(f,l){return(f[0]+l[0]).toUpperCase();}
+function pill(s){
+  if(s==='Active') return '<span class="status-pill pill-active">● Active</span>';
+  if(s==='Remote') return '<span class="status-pill pill-remote">● Remote</span>';
+  return '<span class="status-pill pill-leave">● On Leave</span>';
+}
+function updateKPIs(){
+  const extra=Math.max(0,emps.length-8);
+  const total=248+extra;
+  document.getElementById('kpi-total').textContent=total;
+  document.getElementById('kpi-hires').textContent=31+extra;
+  document.getElementById('overview-sub').textContent=`Wednesday, March 4, 2026 · ${total} total employees`;
+  document.getElementById('emp-sub').textContent=`${emps.length} employees shown`;
+}
+function renderTable(list){
+  const tb=document.getElementById('emp-tbody');
+  if(!list.length){tb.innerHTML='<tr><td colspan="6"><div class="empty-state">😕 No employees match your search</div></td></tr>';return;}
+  tb.innerHTML=list.map(e=>`<tr>
+    <td><div class="emp-name-cell"><div class="hav" style="width:32px;height:32px;font-size:11px;background:${grads[e.id%grads.length]}">${ini(e.fn,e.ln)}</div>${e.fn} ${e.ln}</div></td>
+    <td style="color:var(--muted)">${e.role}</td><td>${e.dept}</td><td>${pill(e.status)}</td>
+    <td style="color:var(--muted);font-size:12px">${e.joined}</td>
+    <td><button class="action-btn" onclick="viewEmp(${e.id})">👁 View</button><button class="action-btn del" onclick="delEmp(${e.id})">✕ Remove</button></td>
+  </tr>`).join('');
+}
+function filterTable(v){ftxt=v.toLowerCase();applyFilters();}
+function filterByStatus(v){fstat=v;applyFilters();}
+function applyFilters(){renderTable(emps.filter(e=>(`${e.fn} ${e.ln} ${e.role} ${e.dept}`).toLowerCase().includes(ftxt)&&(fstat?e.status===fstat:true)));}
+
+function nav(p,el){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  el.classList.add('active');
+  if(p==='employees'){renderTable(emps);updateKPIs();}
+}
+function openAdd(){document.getElementById('addModal').classList.add('open');}
+function openExport(){document.getElementById('exportModal').classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+function addEmp(){
+  const fn=document.getElementById('i-fn').value.trim();
+  const ln=document.getElementById('i-ln').value.trim();
+  const role=document.getElementById('i-role').value.trim();
+  let valid=true;
+  ['i-fn','i-ln','i-role'].forEach(id=>{const el=document.getElementById(id);if(!el.value.trim()){el.classList.add('error');valid=false;}else el.classList.remove('error');});
+  if(!valid){toast('⚠️ Please fill in all required fields (*)');return;}
+  const dept=document.getElementById('i-dept').value;
+  const status=document.getElementById('i-status').value;
+  const email=document.getElementById('i-email').value.trim()||`${fn.toLowerCase()}.${ln.toLowerCase()}@company.com`;
+  const joined=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const emp={id:nid++,fn,ln,role,dept,status,email,joined};
+  emps.unshift(emp);
+  const sc=status==='Active'?'active':status==='Remote'?'remote':'leave';
+  const d=document.createElement('div');d.className='hire-item';
+  d.innerHTML=`<div class="hav" style="width:36px;height:36px;font-size:13px;background:${grads[emp.id%grads.length]}">${ini(fn,ln)}</div><div class="hire-info"><div class="hire-name">${fn} ${ln}</div><div class="hire-role-text">${role} · ${dept}</div></div><div class="sdot ${sc}"></div><div class="hire-date">Today</div>`;
+  document.getElementById('recent-list').prepend(d);
+  updateKPIs();closeModal('addModal');
+  ['i-fn','i-ln','i-role','i-email'].forEach(id=>document.getElementById(id).value='');
+  toast(`✅ ${fn} ${ln} added successfully!`);
+  if(document.getElementById('page-employees').classList.contains('active')) renderTable(emps);
+}
+function viewEmp(id){
+  const e=emps.find(x=>x.id===id);if(!e)return;
+  document.getElementById('v-av').textContent=ini(e.fn,e.ln);
+  document.getElementById('v-av').style.background=grads[e.id%grads.length];
+  document.getElementById('v-name').textContent=`${e.fn} ${e.ln}`;
+  document.getElementById('v-title').textContent=e.role;
+  document.getElementById('v-dept').textContent=e.dept;
+  document.getElementById('v-status').innerHTML=pill(e.status);
+  document.getElementById('v-email').textContent=e.email;
+  document.getElementById('v-joined').textContent=e.joined;
+  document.getElementById('viewModal').classList.add('open');
+}
+function delEmp(id){
+  const e=emps.find(x=>x.id===id);if(!e)return;
+  if(confirm(`Remove ${e.fn} ${e.ln} from the organisation?\n\nThis cannot be undone.`)){
+    emps=emps.filter(x=>x.id!==id);renderTable(emps);updateKPIs();
+    toast(`🗑 ${e.fn} ${e.ln} has been removed`);
+  }
+}
+function doExport(t){closeModal('exportModal');toast(`📥 Exporting as ${t}… (available in full version)`);}
+
+let tTimer;
+function toast(msg){
+  const el=document.getElementById('toastEl');
+  document.getElementById('toast-msg').textContent=msg;
+  el.classList.add('show');clearTimeout(tTimer);
+  tTimer=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+// Charts
+Chart.defaults.font.family='DM Sans';Chart.defaults.color='#6b7280';
+const hCtx=document.getElementById('headcountChart').getContext('2d');
+const g=hCtx.createLinearGradient(0,0,0,220);g.addColorStop(0,'rgba(79,142,247,.3)');g.addColorStop(1,'rgba(79,142,247,0)');
+new Chart(hCtx,{type:'line',data:{labels:['Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'],datasets:[{label:'Employees',data:[195,198,202,207,210,215,218,222,228,232,238,244,248],borderColor:'#4f8ef7',borderWidth:2.5,backgroundColor:g,fill:true,tension:.4,pointBackgroundColor:'#4f8ef7',pointRadius:3,pointHoverRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e2333',borderColor:'rgba(255,255,255,.08)',borderWidth:1,titleColor:'#e8eaf0',bodyColor:'#6b7280',padding:10}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{font:{size:11}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{font:{size:11}},min:180}}}});
+new Chart(document.getElementById('deptChart').getContext('2d'),{type:'doughnut',data:{labels:['Kitchen','Sales','Admin','Finance','HR','Bar'],datasets:[{data:[72,55,48,30,25,18],backgroundColor:['#4f8ef7','#a78bfa','#34d399','#f97316','#f87171','#fbbf24'],borderColor:'#171b26',borderWidth:3,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'right',labels:{font:{size:11},padding:12,boxWidth:10,boxHeight:10}},tooltip:{backgroundColor:'#1e2333',borderColor:'rgba(255,255,255,.08)',borderWidth:1,titleColor:'#e8eaf0',bodyColor:'#6b7280',padding:10}}}});
+</script>
+</body>
+</html>
